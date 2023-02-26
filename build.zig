@@ -23,6 +23,8 @@ pub fn build(b: *std.build.Builder) !void {
         "libbf.c",
     };
     const cflags = &[_][]const u8{
+        "-DCONFIG_CC=\"gcc\"",
+        "-DCONFIG_PREFIX=\".\"",
         "-DCONFIG_BIGNUM",
         "-D_GNU_SOURCE",
         "-DCONFIG_VERSION=\"2021-03-27\"",
@@ -45,6 +47,16 @@ pub fn build(b: *std.build.Builder) !void {
     qjsc.install();
     qjsc.linkLibC();
     qjsc.linkLibrary(qjslib);
+   
+    qjsc.step.dependOn(&b.addInstallFileWithDir(.{
+        .path = "quickjs.h",
+    },.bin,"quickjs.h").step);
+    qjsc.step.dependOn(&b.addInstallFileWithDir(.{
+        .path = "quickjs-libc.h",
+    },.bin,"quickjs-libc.h").step);
+    qjsc.step.dependOn(&b.addInstallFileWithDir(.{
+        .path = "zig-out/lib/libquickjs.a",
+    },.bin,"libquickjs.a").step);
 
     const qjsc_run_cmd = qjsc.run();
     qjsc_run_cmd.step.dependOn(b.getInstallStep());
