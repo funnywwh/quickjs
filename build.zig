@@ -13,9 +13,7 @@ pub fn build(b: *std.build.Builder) !void {
     // const mode = b.standardReleaseOptions();
     const mode = .ReleaseSmall;
 
-    const qjsc = b.addExecutable("qjsc", "src/main.zig");
-    qjsc.setTarget(target);
-    qjsc.setBuildMode(mode);
+
     const qjslib_files = &[_][]const u8{
         "quickjs.c",
         "libregexp.c",
@@ -29,12 +27,24 @@ pub fn build(b: *std.build.Builder) !void {
         "-D_GNU_SOURCE",
         "-DCONFIG_VERSION=\"2021-03-27\"",
     };
-    qjsc.addCSourceFiles(qjslib_files, cflags);
+
+    const qjslib = b.addStaticLibrary("quickjs","src/main.zig");
+    qjslib.setTarget(target);
+    qjslib.setBuildMode(mode);
+    qjslib.addCSourceFiles(qjslib_files, cflags);
+    qjslib.install();
+    qjslib.linkLibC();
+
+    const qjsc = b.addExecutable("qjsc", "src/main.zig");
+    qjsc.setTarget(target);
+    qjsc.setBuildMode(mode);
+    
     qjsc.addCSourceFiles(&[_][]const u8{
         "qjsc.c",
     }, cflags);
     qjsc.install();
     qjsc.linkLibC();
+    qjsc.linkLibrary(qjslib);
 
     const qjsc_run_cmd = qjsc.run();
     qjsc_run_cmd.step.dependOn(b.getInstallStep());
@@ -48,7 +58,7 @@ pub fn build(b: *std.build.Builder) !void {
     qjs.setTarget(target);
     qjs.setBuildMode(mode);
 
-    qjs.addCSourceFiles(qjslib_files, cflags);
+    qjs.linkLibrary(qjslib);
     qjs.addCSourceFiles(&[_][]const u8{
         "qjs.c",
         "qjscalc.c",
