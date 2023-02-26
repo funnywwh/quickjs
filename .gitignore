@@ -1,2 +1,4 @@
 zig-cache
 zig-out
+qjscalc.c
+repl.c

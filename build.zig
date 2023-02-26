@@ -13,39 +13,79 @@ pub fn build(b: *std.build.Builder) !void {
     // const mode = b.standardReleaseOptions();
     const mode = .ReleaseSmall;
 
-    const exe = b.addExecutable("qjsc", "src/main.zig");
-    exe.setTarget(target);
-    exe.setBuildMode(mode);
-    const cfiles = &[_][]const u8{
+    const qjsc = b.addExecutable("qjsc", "src/main.zig");
+    qjsc.setTarget(target);
+    qjsc.setBuildMode(mode);
+    const qjslib_files = &[_][]const u8{
         "quickjs.c",
         "libregexp.c",
         "libunicode.c",
         "cutils.c",
         "quickjs-libc.c",
         "libbf.c",
-        "qjsc.c"
     };
     const cflags = &[_][]const u8{
         "-DCONFIG_BIGNUM",
         "-D_GNU_SOURCE",
         "-DCONFIG_VERSION=\"2021-03-27\"",
-        "-lm","-ldl","-lpthread","-flto",
     };
-    exe.addCSourceFiles(cfiles,cflags);
+    qjsc.addCSourceFiles(qjslib_files, cflags);
+    qjsc.addCSourceFiles(&[_][]const u8{
+        "qjsc.c",
+    }, cflags);
+    qjsc.install();
+    qjsc.linkLibC();
 
-    exe.install();
-    exe.linkLibC();
-
-
-    const run_cmd = exe.run();
-    run_cmd.step.dependOn(b.getInstallStep());
+    const qjsc_run_cmd = qjsc.run();
+    qjsc_run_cmd.step.dependOn(b.getInstallStep());
     if (b.args) |args| {
-        run_cmd.addArgs(args);
+        qjsc_run_cmd.addArgs(args);
     }
+    const run_step = b.step("qjsc", "Run the app");
+    run_step.dependOn(&qjsc_run_cmd.step);
 
-    const run_step = b.step("run", "Run the app");
-    run_step.dependOn(&run_cmd.step);
+    const qjs = b.addExecutable("qjs", "src/main.zig");
+    qjs.setTarget(target);
+    qjs.setBuildMode(mode);
 
+    qjs.addCSourceFiles(qjslib_files, cflags);
+    qjs.addCSourceFiles(&[_][]const u8{
+        "qjs.c",
+        "qjscalc.c",
+        "repl.c",
+    }, cflags);
+
+    qjs.install();
+    qjs.linkLibC();
+
+    const qjs_run_cmd = qjs.run();
+    qjs_run_cmd.step.dependOn(b.getInstallStep());
+    if (b.args) |args| {
+        qjs_run_cmd.addArgs(args);
+    }
+    
+    const qjs_run_step = b.step("qjs", "Run qjs");
+    qjs_run_step.dependOn(&qjs_run_cmd.step);
+
+    var qjscalcStep = b.step("qjscalc","build qjscalc.c");
+
+    const qjscalcCmdStep = b.addSystemCommand(&[_][]const u8{
+        "./zig-out/bin/qjsc", "-fbignum", "-c", "-o", "qjscalc.c", "qjscalc.js",
+    });
+    qjscalcStep.dependOn(&qjscalcCmdStep.step);
+    qjs.step.dependOn(qjscalcStep);
+    
+
+
+    var replStep = b.step("repl","build repl.c");
+
+    const replCmdStep = b.addSystemCommand(&[_][]const u8{
+        "./zig-out/bin/qjsc", "-c", "-o", "repl.c","-m" ,"repl.js",
+    });
+    replStep.dependOn(&replCmdStep.step);
+    qjs.step.dependOn(replStep);
+
+    
     const exe_tests = b.addTest("src/main.zig");
     exe_tests.setTarget(target);
     exe_tests.setBuildMode(mode);
@@ -53,3 +93,5 @@ pub fn build(b: *std.build.Builder) !void {
     const test_step = b.step("test", "Run unit tests");
     test_step.dependOn(&exe_tests.step);
 }
+
+const QjscToCStep = struct {};
