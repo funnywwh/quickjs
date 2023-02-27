@@ -135,8 +135,7 @@ pub const Context = struct {
         return ctx.?;
     }
 
-    pub fn std_set_worker_new_context_func(self: *Context) void {
-        std.debug.assert(self.ctx != null);
+    pub fn std_set_worker_new_context_func() void {
         quickjs.js_std_set_worker_new_context_func(Context.new_ctx);
     }
     pub fn std_add_helpers(self: *Context, argv: [][*:0]const u8) void {

@@ -217,14 +217,20 @@ test "main" {
     };
 
     std.testing.log_level = .debug;
+    std.debug.print("begin\n",.{});
     var rt = try quickjs.Runtime.NewRuntime();
     defer rt.Free();
-    var ctx = try quickjs.Context.NewContext(rt);
-    defer ctx.Free();
-    ctx.std_set_worker_new_context_func();
+    quickjs.Context.std_set_worker_new_context_func();
     rt.std_init_handlers();
     rt.SetModuleLoaderFunc();
-    ctx.std_add_helpers(std.os.argv);
-    ctx.std_eval_binary(&qjsc_pi_bigint, true);
-    
+
+    var ctx = try quickjs.Context.NewContext(rt);
+    defer ctx.Free();
+    var argv = [_][*:0]const u8{
+        "test","10000",
+    };
+    ctx.std_add_helpers(&argv);
+    ctx.std_eval_binary(&qjsc_pi_bigint, false);
+    ctx.std_loop();
+    std.debug.print("end\n",.{});
 }
