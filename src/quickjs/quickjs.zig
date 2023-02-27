@@ -139,4 +139,20 @@ pub const Context = struct {
         std.debug.assert(self.ctx != null);
         quickjs.js_std_set_worker_new_context_func(Context.new_ctx);
     }
+    pub fn std_add_helpers(self: *Context, argv: [][*:0]const u8) void {
+        std.debug.assert(self.ctx != null);
+        quickjs.js_std_add_helpers(self.ctx.?, @intCast(c_int, argv.len), @ptrCast([*c][*c]u8, argv.ptr));
+    }
+    pub fn std_eval_binary(self: *Context, buf: []u8, loadOnly: bool) void {
+        std.debug.assert(self.ctx != null);
+        if (loadOnly) {
+            quickjs.js_std_eval_binary(self.ctx.?, @ptrCast([*c]u8, buf.ptr), buf.len, 1);
+        } else {
+            quickjs.js_std_eval_binary(self.ctx.?, @ptrCast([*c]u8, buf.ptr), buf.len, 0);
+        }
+    }
+    pub fn std_loop(self: *Context)void{
+        std.debug.assert(self.ctx != null);
+        quickjs.js_std_loop(self.ctx.?);
+    }
 };

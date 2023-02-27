@@ -13,7 +13,6 @@ pub fn build(b: *std.build.Builder) !void {
     // const mode = b.standardReleaseOptions();
     const mode = .ReleaseSmall;
 
-
     const qjslib_files = &[_][]const u8{
         "quickjs.c",
         "libregexp.c",
@@ -46,23 +45,23 @@ pub fn build(b: *std.build.Builder) !void {
         .name = "qjsc",
         .target = target,
         .optimize = mode,
-    });   
+    });
     qjsc.addCSourceFiles(&[_][]const u8{
         "qjsc.c",
     }, cflags);
     qjsc.install();
     qjsc.linkLibC();
     qjsc.linkLibrary(qjslib);
-   
+
     qjsc.step.dependOn(&b.addInstallFileWithDir(.{
         .path = "quickjs.h",
-    },.bin,"quickjs.h").step);
+    }, .bin, "quickjs.h").step);
     qjsc.step.dependOn(&b.addInstallFileWithDir(.{
         .path = "quickjs-libc.h",
-    },.bin,"quickjs-libc.h").step);
+    }, .bin, "quickjs-libc.h").step);
     qjsc.step.dependOn(&b.addInstallFileWithDir(.{
         .path = "zig-out/lib/libquickjs.a",
-    },.bin,"libquickjs.a").step);
+    }, .bin, "libquickjs.a").step);
 
     const qjsc_run_cmd = qjsc.run();
     qjsc_run_cmd.step.dependOn(b.getInstallStep());
@@ -93,29 +92,26 @@ pub fn build(b: *std.build.Builder) !void {
     if (b.args) |args| {
         qjs_run_cmd.addArgs(args);
     }
-    
+
     const qjs_run_step = b.step("qjs", "Run qjs");
     qjs_run_step.dependOn(&qjs_run_cmd.step);
 
-    var qjscalcStep = b.step("qjscalc","build qjscalc.c");
+    var qjscalcStep = b.step("qjscalc", "build qjscalc.c");
 
     const qjscalcCmdStep = b.addSystemCommand(&[_][]const u8{
         "./zig-out/bin/qjsc", "-fbignum", "-c", "-o", "qjscalc.c", "qjscalc.js",
     });
     qjscalcStep.dependOn(&qjscalcCmdStep.step);
     qjs.step.dependOn(qjscalcStep);
-    
 
-
-    var replStep = b.step("repl","build repl.c");
+    var replStep = b.step("repl", "build repl.c");
 
     const replCmdStep = b.addSystemCommand(&[_][]const u8{
-        "./zig-out/bin/qjsc", "-c", "-o", "repl.c","-m" ,"repl.js",
+        "./zig-out/bin/qjsc", "-c", "-o", "repl.c", "-m", "repl.js",
     });
     replStep.dependOn(&replCmdStep.step);
     qjs.step.dependOn(replStep);
 
-    
     const exe_tests = b.addTest(.{
         .name = "qjsc",
         .root_source_file = .{
@@ -127,7 +123,7 @@ pub fn build(b: *std.build.Builder) !void {
     exe_tests.linkLibC();
     exe_tests.addIncludePath(".");
     exe_tests.linkLibrary(qjslib);
-    
+
     const test_step = b.step("test", "Run unit tests");
     test_step.dependOn(&exe_tests.step);
 }
