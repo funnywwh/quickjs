@@ -124,7 +124,10 @@ pub fn build(b: *std.build.Builder) !void {
         .target = target,
         .optimize = mode,
     });
-
+    exe_tests.linkLibC();
+    exe_tests.addIncludePath(".");
+    exe_tests.linkLibrary(qjslib);
+    
     const test_step = b.step("test", "Run unit tests");
     test_step.dependOn(&exe_tests.step);
 }
