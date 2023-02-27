@@ -1,9 +1,7 @@
 const std = @import("std");
 const quickjs = @import("quickjs/quickjs.zig");
 
-pub extern fn main() void;
-
-test "main" {
+pub fn main() !void{
     var qjsc_pi_bigint = [_]u8{
         0x02, 0x30, 0x14, 0x66, 0x6c, 0x6f, 0x6f, 0x72,
         0x5f, 0x6c, 0x6f, 0x67, 0x32, 0x12, 0x63, 0x65,
@@ -217,7 +215,6 @@ test "main" {
     };
 
     std.testing.log_level = .debug;
-    std.debug.print("begin\n",.{});
     var rt = try quickjs.Runtime.NewRuntime();
     defer rt.Free();
     quickjs.Context.std_set_worker_new_context_func();
@@ -226,12 +223,10 @@ test "main" {
 
     var ctx = try quickjs.Context.NewContext(rt);
     defer ctx.Free();
-    var argv = [_][*:0]const u8{
-        "test","10000",
-    };
-    ctx.std_add_helpers(&argv);
+    // var argv = [_][*:0]const u8{
+    //     "test","10000",
+    // };
+    ctx.std_add_helpers(std.os.argv);
     ctx.std_eval_binary(&qjsc_pi_bigint, false);
     ctx.std_loop();
-    std.log.debug("hello\n",.{});
-    std.debug.print("end\n",.{});
 }

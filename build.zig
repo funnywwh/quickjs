@@ -112,6 +112,20 @@ pub fn build(b: *std.build.Builder) !void {
     replStep.dependOn(&replCmdStep.step);
     qjs.step.dependOn(replStep);
 
+    const pi_exe = b.addExecutable(.{
+        .name = "pi",
+        .root_source_file = .{
+            .path = "src/pi.zig",
+        },
+        .target = target,
+        .optimize = mode,
+    });
+    pi_exe.linkLibC();
+    pi_exe.linkLibrary(qjslib);
+    pi_exe.install();
+    pi_exe.addIncludePath(".");
+    // pi_exe.step.dependOn(b.getInstallStep());
+
     const exe_tests = b.addTest(.{
         .name = "qjsc",
         .root_source_file = .{
