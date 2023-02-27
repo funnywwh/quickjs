@@ -29,18 +29,24 @@ pub fn build(b: *std.build.Builder) !void {
         "-D_GNU_SOURCE",
         "-DCONFIG_VERSION=\"2021-03-27\"",
     };
+    const qjslib = b.addStaticLibrary(.{
+        .name = "quickjs",
+        .root_source_file = .{
+            .path = "src/main.zig",
+        },
+        .target = target,
+        .optimize = mode,
+    });
 
-    const qjslib = b.addStaticLibrary("quickjs","src/main.zig");
-    qjslib.setTarget(target);
-    qjslib.setBuildMode(mode);
     qjslib.addCSourceFiles(qjslib_files, cflags);
     qjslib.install();
     qjslib.linkLibC();
 
-    const qjsc = b.addExecutable("qjsc", "src/main.zig");
-    qjsc.setTarget(target);
-    qjsc.setBuildMode(mode);
-    
+    const qjsc = b.addExecutable(.{
+        .name = "qjsc",
+        .target = target,
+        .optimize = mode,
+    });   
     qjsc.addCSourceFiles(&[_][]const u8{
         "qjsc.c",
     }, cflags);
@@ -66,9 +72,11 @@ pub fn build(b: *std.build.Builder) !void {
     const run_step = b.step("qjsc", "Run the app");
     run_step.dependOn(&qjsc_run_cmd.step);
 
-    const qjs = b.addExecutable("qjs", "src/main.zig");
-    qjs.setTarget(target);
-    qjs.setBuildMode(mode);
+    const qjs = b.addExecutable(.{
+        .name = "qjs",
+        .target = target,
+        .optimize = mode,
+    });
 
     qjs.linkLibrary(qjslib);
     qjs.addCSourceFiles(&[_][]const u8{
@@ -108,9 +116,14 @@ pub fn build(b: *std.build.Builder) !void {
     qjs.step.dependOn(replStep);
 
     
-    const exe_tests = b.addTest("src/main.zig");
-    exe_tests.setTarget(target);
-    exe_tests.setBuildMode(mode);
+    const exe_tests = b.addTest(.{
+        .name = "qjsc",
+        .root_source_file = .{
+            .path = "src/main.zig",
+        },
+        .target = target,
+        .optimize = mode,
+    });
 
     const test_step = b.step("test", "Run unit tests");
     test_step.dependOn(&exe_tests.step);
