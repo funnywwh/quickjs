@@ -34,4 +34,8 @@ test "quickjs test"{
     var evalVal = ctx.EvalString("print(\"Hello World\");","test.js",quickjs.EvalType.GLOBAL);
     defer evalVal.Free();
     std.debug.print("quickjs test ok\n",.{});
+
+    var evelFileRet = try ctx.EvalFile("examples/hello.js",quickjs.EvalType.GLOBAL);
+    defer evelFileRet.Free();
+    ctx.std_loop();
 }

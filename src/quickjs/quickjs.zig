@@ -172,6 +172,22 @@ pub const Context = struct {
             .val = retVal,
         };
     }
+    pub inline fn EvalFile(self: *Context,filename:[]const u8,flag:i32)!Value{
+        std.debug.assert(self.ctx != null);
+        var f = try std.fs.cwd().openFileZ(@ptrCast([*:0]const u8, filename.ptr),.{});
+        defer f.close();        
+        var fsize = try f.getEndPos();
+        var arenaAllocator = std.heap.ArenaAllocator.init(std.heap.page_allocator);
+        defer arenaAllocator.deinit();
+        var allocator = arenaAllocator.allocator();
+        var buffer = try allocator.alloc(u8,fsize);
+
+        var readn = try f.read(buffer);
+        if(readn <= 0){
+            return error.EvalFileRead;
+        }
+        return self.EvalString(buffer,filename,flag);
+    }
     pub inline fn std_loop(self: *Context)void{
         std.debug.assert(self.ctx != null);
         quickjs.js_std_loop(self.ctx.?);
