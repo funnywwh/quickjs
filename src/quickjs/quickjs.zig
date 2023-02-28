@@ -27,6 +27,20 @@ pub const Runtime = struct {
     }
 };
 
+pub const EvalFlag = struct{
+    pub const STRICT = quickjs.JS_EVAL_FLAG_STRICT;
+    pub const STRIP = quickjs.JS_EVAL_FLAG_STRIP;
+    pub const COMPILE_ONLY = quickjs.JS_EVAL_FLAG_COMPILE_ONLY;
+    pub const BACKTRACE_BARRIER = quickjs.JS_EVAL_FLAG_BACKTRACE_BARRIER;
+};
+
+pub const EvalType = struct{
+    pub const GLOBAL = quickjs.JS_EVAL_TYPE_GLOBAL;
+    pub const MODULE = quickjs.JS_EVAL_TYPE_MODULE;
+    pub const DIRECT = quickjs.JS_EVAL_TYPE_DIRECT;
+    pub const INDIRECT = quickjs.JS_EVAL_TYPE_INDIRECT;
+    pub const MASK = quickjs.JS_EVAL_TYPE_MASK;
+};
 pub const Context = struct {
     ctx: ?*quickjs.JSContext,
     pub fn NewContext(rt: Runtime) !Context {
@@ -150,8 +164,65 @@ pub const Context = struct {
             quickjs.js_std_eval_binary(self.ctx.?, @ptrCast([*c]u8, buf.ptr), buf.len, 0);
         }
     }
-    pub fn std_loop(self: *Context)void{
+    pub inline fn EvalString(self: *Context, buf:[]const u8,filename:[]const u8,flag:i32)Value{
+        std.debug.assert(self.ctx != null);
+        var retVal = quickjs.JS_Eval(self.ctx,buf.ptr,buf.len,filename.ptr,flag);
+        return Value{
+            .ctx = self,
+            .val = retVal,
+        };
+    }
+    pub inline fn std_loop(self: *Context)void{
         std.debug.assert(self.ctx != null);
         quickjs.js_std_loop(self.ctx.?);
+    }
+
+    pub inline fn NewBool(self: *Context,val:bool)Value{
+        std.debug.assert(self.ctx != null);
+        
+        var jsv = quickjs.JS_NewBool(self.ctx.?,@boolToInt(val));
+        return Value{
+            .ctx = self,
+            .val = jsv,
+        };
+    }
+
+    pub inline fn NewInt32(self: *Context,val:u32)Value{
+        std.debug.assert(self.ctx != null);        
+        var jsv = quickjs.JS_NewInt32(self.ctx.?,val);
+        return Value{
+            .ctx = self,
+            .val = jsv,
+        };
+    }
+    pub inline fn NewCatchOffset(self: *Context,val:u32)Value{
+        std.debug.assert(self.ctx != null);        
+        var jsv = quickjs.JS_NewCatchOffset(self.ctx.?,val);
+        return Value{
+            .ctx = self,
+            .val = jsv,
+        };
+    }
+};
+
+pub const Value = struct{
+    ctx:*Context,
+    val:?quickjs.JSValue,
+    pub fn Free(self:*Value)void{
+        std.debug.assert(self.val != null);
+        quickjs.JS_FreeValue(self.ctx.ctx,self.val.?);
+        self.val = null;
+    }
+    pub fn Dup(self:*Value)Value{
+        std.debug.assert(self.val != null);
+        var jsv = quickjs.JS_DupValue(self.ctx.ctx,self.val.?);
+        return Value{
+            .ctx = self.ctx,
+            .val = jsv,
+        };
+    }
+    pub fn IsException(self:*Value)bool{
+        std.debug.assert(self.val != null);
+        return quickjs.JS_IsException(self.val.?) != 0;
     }
 };

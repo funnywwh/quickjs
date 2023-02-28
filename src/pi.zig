@@ -214,7 +214,6 @@ pub fn main() !void{
         0x01, 0xa0,
     };
 
-    std.testing.log_level = .debug;
     var rt = try quickjs.Runtime.NewRuntime();
     defer rt.Free();
     quickjs.Context.std_set_worker_new_context_func();
@@ -223,9 +222,6 @@ pub fn main() !void{
 
     var ctx = try quickjs.Context.NewContext(rt);
     defer ctx.Free();
-    // var argv = [_][*:0]const u8{
-    //     "test","10000",
-    // };
     ctx.std_add_helpers(std.os.argv);
     ctx.std_eval_binary(&qjsc_pi_bigint, false);
     ctx.std_loop();
