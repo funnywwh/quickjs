@@ -68,7 +68,7 @@ pub fn build(b: *std.build.Builder) !void {
     if (b.args) |args| {
         qjsc_run_cmd.addArgs(args);
     }
-    const run_step = b.step("qjsc", "Run the app");
+    const run_step = b.step("qjsc", "Run the qjsc");
     run_step.dependOn(&qjsc_run_cmd.step);
 
     const qjs = b.addExecutable(.{
@@ -124,8 +124,12 @@ pub fn build(b: *std.build.Builder) !void {
     pi_exe.linkLibrary(qjslib);
     pi_exe.install();
     pi_exe.addIncludePath(".");
-    // pi_exe.step.dependOn(b.getInstallStep());
-
+    const pi_run_cmd_step = pi_exe.run();
+    const pi_run_step = b.step("pi","Run the pi");
+    pi_run_step.dependOn(&pi_run_cmd_step.step);
+    if (b.args) |args| {
+        pi_run_cmd_step.addArgs(args);
+    }
     const exe_tests = b.addTest(.{
         .name = "qjsc",
         .root_source_file = .{
