@@ -31,7 +31,7 @@ pub fn build(b: *std.build.Builder) !void {
     const qjslib = b.addStaticLibrary(.{
         .name = "quickjs",
         .root_source_file = .{
-            .path = "src/main.zig",
+            .path = "src/extern_main.zig",
         },
         .target = target,
         .optimize = mode,
@@ -133,7 +133,7 @@ pub fn build(b: *std.build.Builder) !void {
     const exe_tests = b.addTest(.{
         .name = "qjsc",
         .root_source_file = .{
-            .path = "src/main.zig",
+            .path = "src/extern_main.zig",
         },
         .target = target,
         .optimize = mode,
