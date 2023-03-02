@@ -1,5 +1,18 @@
 const std = @import("std");
 const quickjs = @cImport(@cInclude("quickjs-libc.h"));
+const module = @import("module.zig");
+
+pub const Module = module;
+
+pub const JSModuleInitFunc = quickjs.JSModuleInitFunc;
+pub const JSContext = quickjs.JSContext;
+pub const JSModuleDef = quickjs.JSModuleDef;
+pub const JSCFunctionListEntry = quickjs.JSCFunctionListEntry;
+pub const JS_CFUNC_DEF = quickjs.JS_CFUNC_DEF;
+pub const JSValueConst = quickjs.JSValueConst;
+pub const JSValue = quickjs.JSValue;
+pub const JS_NewBool = quickjs.JS_NewBool;
+
 pub const Runtime = struct {
     rt: ?*quickjs.JSRuntime,
     pub fn NewRuntime() !Runtime {
@@ -27,14 +40,14 @@ pub const Runtime = struct {
     }
 };
 
-pub const EvalFlag = struct{
+pub const EvalFlag = struct {
     pub const STRICT = quickjs.JS_EVAL_FLAG_STRICT;
     pub const STRIP = quickjs.JS_EVAL_FLAG_STRIP;
     pub const COMPILE_ONLY = quickjs.JS_EVAL_FLAG_COMPILE_ONLY;
     pub const BACKTRACE_BARRIER = quickjs.JS_EVAL_FLAG_BACKTRACE_BARRIER;
 };
 
-pub const EvalType = struct{
+pub const EvalType = struct {
     pub const GLOBAL = quickjs.JS_EVAL_TYPE_GLOBAL;
     pub const MODULE = quickjs.JS_EVAL_TYPE_MODULE;
     pub const DIRECT = quickjs.JS_EVAL_TYPE_DIRECT;
@@ -164,80 +177,102 @@ pub const Context = struct {
             quickjs.js_std_eval_binary(self.ctx.?, @ptrCast([*c]u8, buf.ptr), buf.len, 0);
         }
     }
-    pub inline fn EvalString(self: *Context, buf:[]const u8,filename:[]const u8,flag:i32)Value{
+    pub inline fn EvalString(self: *Context, buf: []const u8, filename: []const u8, flag: i32) Value {
         std.debug.assert(self.ctx != null);
-        var retVal = quickjs.JS_Eval(self.ctx,buf.ptr,buf.len,filename.ptr,flag);
+        var retVal = quickjs.JS_Eval(self.ctx, buf.ptr, buf.len, filename.ptr, flag);
         return Value{
             .ctx = self,
             .val = retVal,
         };
     }
-    pub inline fn EvalFile(self: *Context,filename:[]const u8,flag:i32)!Value{
+    pub inline fn EvalFile(self: *Context, filename: []const u8, flag: i32) !Value {
         std.debug.assert(self.ctx != null);
-        var f = try std.fs.cwd().openFileZ(@ptrCast([*:0]const u8, filename.ptr),.{});
-        defer f.close();        
+        var f = try std.fs.cwd().openFileZ(@ptrCast([*:0]const u8, filename.ptr), .{});
+        defer f.close();
         var fsize = try f.getEndPos();
         var arenaAllocator = std.heap.ArenaAllocator.init(std.heap.page_allocator);
         defer arenaAllocator.deinit();
         var allocator = arenaAllocator.allocator();
-        var buffer = try allocator.alloc(u8,fsize);
+        var buffer = try allocator.alloc(u8, fsize);
 
         var readn = try f.read(buffer);
-        if(readn <= 0){
+        if (readn <= 0) {
             return error.EvalFileRead;
         }
-        return self.EvalString(buffer,filename,flag);
+        return self.EvalString(buffer, filename, flag);
     }
-    pub inline fn std_loop(self: *Context)void{
+    pub inline fn std_loop(self: *Context) void {
         std.debug.assert(self.ctx != null);
         quickjs.js_std_loop(self.ctx.?);
     }
 
-    pub inline fn NewBool(self: *Context,val:bool)Value{
+    pub inline fn NewBool(self: *Context, val: bool) Value {
         std.debug.assert(self.ctx != null);
-        
-        var jsv = quickjs.JS_NewBool(self.ctx.?,@boolToInt(val));
+
+        var jsv = quickjs.JS_NewBool(self.ctx.?, @boolToInt(val));
         return Value{
             .ctx = self,
             .val = jsv,
         };
     }
 
-    pub inline fn NewInt32(self: *Context,val:u32)Value{
-        std.debug.assert(self.ctx != null);        
-        var jsv = quickjs.JS_NewInt32(self.ctx.?,val);
+    pub inline fn NewInt32(self: *Context, val: u32) Value {
+        std.debug.assert(self.ctx != null);
+        var jsv = quickjs.JS_NewInt32(self.ctx.?, val);
         return Value{
             .ctx = self,
             .val = jsv,
         };
     }
-    pub inline fn NewCatchOffset(self: *Context,val:u32)Value{
-        std.debug.assert(self.ctx != null);        
-        var jsv = quickjs.JS_NewCatchOffset(self.ctx.?,val);
+    pub inline fn NewCatchOffset(self: *Context, val: u32) Value {
+        std.debug.assert(self.ctx != null);
+        var jsv = quickjs.JS_NewCatchOffset(self.ctx.?, val);
         return Value{
             .ctx = self,
             .val = jsv,
         };
+    }
+
+    pub inline fn NewCModule(self: *Context, moduleName: []const u8, comptime intiFunc: JSModuleInitFunc) !module.Module {
+        std.debug.assert(self.ctx != null);
+        const m = module.Module{
+            .def = quickjs.JS_NewCModule(self.ctx, moduleName.ptr, intiFunc),
+        };
+        if (m.def == null) {
+            return error.NewCModuleNullPtr;
+        }
+        return m;
+    }
+
+    pub inline fn AddModuleExportList(self: *Context,m:*JSModuleDef,tab:[]JSCFunctionListEntry) !void {
+        std.debug.assert(self.ctx != null);
+        var ret = quickjs.JS_AddModuleExportList(self.ctx,m,tab.ptr,@intCast(c_int,tab.len));
+        if(ret != 0){
+            return error.AddModuleExportList;
+        }
     }
 };
 
-pub const Value = struct{
-    ctx:*Context,
-    val:?quickjs.JSValue,
-    pub fn Free(self:*Value)void{
+
+
+
+pub const Value = struct {
+    ctx: *Context,
+    val: ?quickjs.JSValue,
+    pub fn Free(self: *Value) void {
         std.debug.assert(self.val != null);
-        quickjs.JS_FreeValue(self.ctx.ctx,self.val.?);
+        quickjs.JS_FreeValue(self.ctx.ctx, self.val.?);
         self.val = null;
     }
-    pub fn Dup(self:*Value)Value{
+    pub fn Dup(self: *Value) Value {
         std.debug.assert(self.val != null);
-        var jsv = quickjs.JS_DupValue(self.ctx.ctx,self.val.?);
+        var jsv = quickjs.JS_DupValue(self.ctx.ctx, self.val.?);
         return Value{
             .ctx = self.ctx,
             .val = jsv,
         };
     }
-    pub fn IsException(self:*Value)bool{
+    pub fn IsException(self: *Value) bool {
         std.debug.assert(self.val != null);
         return quickjs.JS_IsException(self.val.?) != 0;
     }
